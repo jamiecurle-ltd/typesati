@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// The menu shown when the menu-bar icon is clicked.
 struct MenuView: View {
@@ -14,13 +14,17 @@ struct MenuView: View {
                 Text("time remaining: \(clock(remaining))")
             }
             Text("\(session.backspaceCount) backspace / \(session.otherCount) others")
-            Text("current streak: \(session.currentStreak) characters, \(clock(session.currentStreakDuration)) (\(streakWPM(session.currentStreak, session.currentStreakDuration)) wpm)")
-            Text("longest streak: \(session.longestStreak) characters, \(clock(session.longestStreakDuration)) (\(streakWPM(session.longestStreak, session.longestStreakDuration)) wpm)")
+            Text(
+                "current streak: \(session.currentStreak) characters, \(clock(session.currentStreakDuration)) (\(streakWPM(session.currentStreak, session.currentStreakDuration)) wpm)"
+            )
+            Text(
+                "longest streak: \(session.longestStreak) characters, \(clock(session.longestStreakDuration)) (\(streakWPM(session.longestStreak, session.longestStreakDuration)) wpm)"
+            )
             Text("words per minute: \(Int(session.wpm.rounded()))")
-            Button("End Session") { session.endSession() }
+            Button("End session") { session.endSession() }
         } else {
             Button("Start 5-min session") { session.startSession(targetDuration: 5 * 60) }
-            Button("Start Session") { session.startSession() }
+            Button("Start session") { session.startSession() }
         }
 
         if session.needsPermission {
@@ -35,7 +39,7 @@ struct MenuView: View {
 
         Toggle("Play session bells", isOn: $playSessionBell)
 
-        Button("Open Data Folder") { openDataFolder() }
+        Button("Open data folder") { openDataFolder() }
 
         Divider()
 

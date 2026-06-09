@@ -97,10 +97,10 @@ struct StatsView: View {
         }
     }
 
-    /// Fills the spare space in the top row: a prompt linking to the feature-request board.
+    /// Fills the spare space in the top row: a prompt that opens a feature-request email.
     /// Inverted (dark fill, white type) so it reads as the call-to-action among the cards.
     private var requestBox: some View {
-        Link(destination: URL(string: "https://typesati.canny.io/feature-requests")!) {
+        Link(destination: URL(string: "mailto:hello@typesati.app")!) {
             VStack(alignment: .leading, spacing: grid / 2) {
                 Text("feature missing?")
                 Text("request it")

@@ -89,13 +89,13 @@ struct MenuView: View {
         NSWorkspace.shared.activateFileViewerSelecting([Database.fileURL])
     }
 
-    /// Opens the public Canny board where users can submit and upvote feature requests.
+    /// Opens the user's mail client with a pre-addressed feature-request email.
     private func requestFeature() {
-        NSWorkspace.shared.open(URL(string: "https://typesati.canny.io/feature-requests")!)
+        NSWorkspace.shared.open(URL(string: "mailto:hello@typesati.app")!)
     }
 
-    /// Opens the public Canny changelog so users can see what's new.
+    /// Opens the GitHub releases page so users can see what's new.
     private func openChangelog() {
-        NSWorkspace.shared.open(URL(string: "https://typesati.canny.io/changelog")!)
+        NSWorkspace.shared.open(URL(string: "https://github.com/jamiecurle-ltd/typesati/releases")!)
     }
 }

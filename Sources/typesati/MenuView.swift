@@ -42,7 +42,7 @@ struct MenuView: View {
 
         Divider()
 
-        Button("Show stats…") { showStats() }
+        Button("Show stats") { showStats() }
 
         Button("Open data folder") { openDataFolder() }
 
@@ -62,7 +62,8 @@ struct MenuView: View {
     /// The app's marketing version (`CFBundleShortVersionString`), shown in the menu so the
     /// user can tell at a glance which build they're on. Falls back to "—" if unreadable.
     private var appVersion: String {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String).map { "v\($0)" } ?? "—"
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String).map { "v\($0)" }
+            ?? "—"
     }
 
     /// Formats a duration as `mm:ss` (e.g. 334s -> "05:34").

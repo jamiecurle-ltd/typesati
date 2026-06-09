@@ -128,6 +128,22 @@ final class Database {
         }
     }
 
+    /// The best (longest) streak ever, with the date of the session it happened in — for
+    /// the "best typing streak" card. Returns nil when there's no history yet.
+    func bestTypingStreak() throws -> (count: Int, date: Date)? {
+        try dbQueue.read { db in
+            let row = try Row.fetchOne(db, sql: """
+                SELECT st.length AS length, s.started_at AS started_at
+                FROM streaks st
+                JOIN sessions s ON s.id = st.session_id
+                ORDER BY st.length DESC
+                LIMIT 1
+                """)
+            guard let row else { return nil }
+            return (count: row["length"], date: row["started_at"])
+        }
+    }
+
     /// Appends one finished streak to the log, tied to its session: its length
     /// (non-backspace characters) and how long it lasted. Called as each streak ends, so
     /// the run survives a crash mid-session.
@@ -138,6 +154,95 @@ final class Database {
                 arguments: [sessionID, length, Int(duration * 1000)]
             )
         }
+    }
+
+    // MARK: - Stats
+
+    /// One completed session's headline stats, for the chart. `accuracy` is the percentage
+    /// of keystrokes that weren't a backspace; `wpm` is non-backspace characters ÷ 5 over
+    /// the session's wall-clock duration — both the same definitions the live menu shows.
+    struct SessionStat: Identifiable {
+        let id: Int64
+        let date: Date
+        let accuracy: Double
+        /// nil when the session has no recorded duration yet (no `ended_at`), so WPM
+        /// can't be computed — the accuracy point still plots.
+        let wpm: Double?
+    }
+
+    /// Per-session accuracy and WPM over time, oldest first, for the stats line graph.
+    /// Pivots the `key_counts` rows (one per kind) up to the session. Sessions with no
+    /// keystrokes yet are skipped — they'd have no meaningful accuracy and only add a gap.
+    func sessionStats() throws -> [SessionStat] {
+        try dbQueue.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT
+                    s.id AS id,
+                    s.started_at AS started_at,
+                    s.ended_at AS ended_at,
+                    COALESCE(SUM(CASE WHEN kc.kind = 'backspace' THEN kc.count END), 0) AS backspace,
+                    COALESCE(SUM(CASE WHEN kc.kind = 'other'     THEN kc.count END), 0) AS other
+                FROM sessions s
+                JOIN key_counts kc ON kc.session_id = s.id
+                GROUP BY s.id, s.started_at, s.ended_at
+                HAVING (backspace + other) > 0
+                ORDER BY s.started_at ASC
+                """)
+            return rows.map { row in
+                let backspace: Int = row["backspace"]
+                let other: Int = row["other"]
+                let total = backspace + other
+                let started: Date = row["started_at"]
+                let ended: Date? = row["ended_at"]
+                // WPM = words (chars ÷ 5) over the session's minutes; only when we have a
+                // positive duration to divide by.
+                var wpm: Double?
+                if let ended {
+                    let minutes = ended.timeIntervalSince(started) / 60
+                    if minutes > 0 { wpm = (Double(other) / 5) / minutes }
+                }
+                return SessionStat(
+                    id: row["id"],
+                    date: started,
+                    accuracy: Double(other) / Double(total) * 100,
+                    wpm: wpm
+                )
+            }
+        }
+    }
+
+    /// Current streak in days: the run of consecutive calendar days, ending today (or
+    /// yesterday — a streak stays "alive" until the day after the last session), on which
+    /// at least one session was started. Days are local-calendar days. Returns 0 if there's
+    /// no session today or yesterday.
+    func currentDayStreak(calendar: Calendar = .current, now: Date = Date()) throws -> Int {
+        let dates = try dbQueue.read { db in
+            try Date.fetchAll(db, sql: "SELECT started_at FROM sessions")
+        }
+        // Collapse to the set of distinct local days that have any session.
+        let days = Set(dates.map { calendar.startOfDay(for: $0) })
+        guard !days.isEmpty else { return 0 }
+
+        let today = calendar.startOfDay(for: now)
+        // Anchor on today if used today, else yesterday (so a streak isn't lost just because
+        // today's session hasn't happened yet); if neither, the streak is broken.
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
+        var cursor: Date
+        if days.contains(today) {
+            cursor = today
+        } else if days.contains(yesterday) {
+            cursor = yesterday
+        } else {
+            return 0
+        }
+
+        var streak = 0
+        while days.contains(cursor) {
+            streak += 1
+            guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = prev
+        }
+        return streak
     }
 
     // MARK: - Counts

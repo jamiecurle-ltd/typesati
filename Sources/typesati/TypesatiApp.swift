@@ -5,6 +5,8 @@ import AppKit
 struct TypesatiApp: App {
     @StateObject private var session: SessionManager
     @AppStorage(PrefKey.showAccuracyInMenuBar) private var showAccuracy = true
+    /// Kept so the stats window can query history directly (same instance the session writes to).
+    private let db: Database
 
     init() {
         // Defaults that non-view code also reads (SessionManager checks the bell pref), so
@@ -20,6 +22,7 @@ struct TypesatiApp: App {
         } catch {
             fatalError("typesati: could not open database: \(error)")
         }
+        self.db = db
         _session = StateObject(wrappedValue: SessionManager(db: db))
     }
 
@@ -36,5 +39,13 @@ struct TypesatiApp: App {
                 Image(systemName: icon)
             }
         }
+
+        // Stats live in a regular window, opened from the menu via openWindow(id: "stats").
+        Window("typesati: your progress", id: "stats") {
+            StatsView(db: db)
+        }
+        // Fixed-size window: the view sets an exact frame, and .contentSize locks the
+        // window to it so there's no resize handle.
+        .windowResizability(.contentSize)
     }
 }
